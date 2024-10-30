@@ -108,8 +108,21 @@ public:
     return bondAllocated() ? !bond_->isBroken() : false;
   }
 
+  void scheduleBusyPeriod(
+    const std::chrono::nanoseconds delay,
+    const std::chrono::nanoseconds duration)
+  {
+    timer_ = create_timer(delay, [this, duration]() -> void {
+          timer_.reset();
+          RCLCPP_INFO(get_logger(), "Starting busy work");
+          std::this_thread::sleep_for(duration);
+          RCLCPP_INFO(get_logger(), "Finished busy work");
+    });
+  }
+
   std::string state;
   bool enable_bond;
+  rclcpp::TimerBase::SharedPtr timer_;
 };
 
 class TestFixture
@@ -181,6 +194,42 @@ TEST(LifecycleBondTest, NEGATIVE)
   EXPECT_EQ(
     nav2_lifecycle_manager::SystemStatus::INACTIVE,
     client.is_active(std::chrono::nanoseconds(1000000000)));
+}
+
+TEST(LifecycleBondTest, DOWN_AND_UP)
+{
+  // let the lifecycle server come up
+  rclcpp::Rate(1).sleep();
+
+  auto node = std::make_shared<rclcpp::Node>("lifecycle_manager_test_service_client");
+  nav2_lifecycle_manager::LifecycleManagerClient client("lifecycle_manager_test", node);
+
+  // create node, should be up now
+  auto fixture = TestFixture(true, "bond_tester");
+  auto bond_tester = fixture.lf_node_;
+
+  EXPECT_TRUE(client.startup());
+
+  // check if bond is connected after being activated
+  rclcpp::Rate(5).sleep();
+  EXPECT_TRUE(bond_tester->isBondConnected());
+  EXPECT_EQ(bond_tester->getState(), "activated");
+
+  // bond should be disconnected now and lifecycle manager should know and react to reset
+
+  RCLCPP_INFO(bond_tester->get_logger(), "Before");
+  rclcpp::sleep_for(std::chrono::seconds(1));
+  bond_tester->scheduleBusyPeriod(std::chrono::seconds(1), std::chrono::seconds(3));
+  rclcpp::sleep_for(std::chrono::seconds(9));
+  RCLCPP_INFO(bond_tester->get_logger(), "After");
+
+  EXPECT_TRUE(bond_tester->isBondConnected());
+  EXPECT_EQ(bond_tester->getState(), "activated");
+
+  // clean state for next test.
+  EXPECT_TRUE(client.reset());
+  EXPECT_FALSE(bond_tester->isBondConnected());
+  EXPECT_EQ(bond_tester->getState(), "cleaned up");
 }
 
 int main(int argc, char ** argv)
