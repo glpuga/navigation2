@@ -218,9 +218,8 @@ TEST(LifecycleBondTest, DOWN_AND_UP)
   // bond should be disconnected now and lifecycle manager should know and react to reset
 
   RCLCPP_INFO(bond_tester->get_logger(), "Before");
-  rclcpp::sleep_for(std::chrono::seconds(1));
-  bond_tester->scheduleBusyPeriod(std::chrono::seconds(1), std::chrono::seconds(3));
-  rclcpp::sleep_for(std::chrono::seconds(9));
+  bond_tester->scheduleBusyPeriod(std::chrono::seconds(4), std::chrono::seconds(3));
+  rclcpp::sleep_for(std::chrono::seconds(10));
   RCLCPP_INFO(bond_tester->get_logger(), "After");
 
   EXPECT_TRUE(bond_tester->isBondConnected());
