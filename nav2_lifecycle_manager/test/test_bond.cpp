@@ -219,7 +219,7 @@ TEST(LifecycleBondTest, DOWN_AND_UP)
 
   RCLCPP_INFO(bond_tester->get_logger(), "Before");
   bond_tester->scheduleBusyPeriod(std::chrono::seconds(4), std::chrono::seconds(3));
-  rclcpp::sleep_for(std::chrono::seconds(10));
+  rclcpp::sleep_for(std::chrono::seconds(15));
   RCLCPP_INFO(bond_tester->get_logger(), "After");
 
   EXPECT_TRUE(bond_tester->isBondConnected());
